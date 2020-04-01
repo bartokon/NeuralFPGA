@@ -1,129 +1,65 @@
 #include "Neural.h"
 #include "TopSynthFunction.h"
 
-void TopFun(dataType inputData[1000])
+#define inputsize 5
+#define neuronamout 2
+
+void TopFun(dataType inputData[inputsize])
 {
-	dataType buffer[1000] = {0};
-	for (int i = 0; i < 1000; i++)
+	dataType bufferOne[inputsize] = {0};
+	dataType bufferTwo[inputsize] = {0};
+
+	for (int i = 0; i < inputsize; i++)
 	{
-		buffer[i] = inputData[i];
+		bufferOne[i] = inputData[i];
 	}
 
 
-	dataType biases[1000] = { 5 };
-	dataType miniBuffer[2] = {0};
-	dataType out = 69;
-	//template <class neuronDataType, int inputs, int layerNumber>
+//Creating memory interfaces and bias uploads
 
-	Neuron<dataType, 1, 0, sigmoid> neu11;
-	Neuron<dataType, 1, 0, sigmoid> neu12;
+	Layer<dataType, neuronamout, inputsize, sigmoid> firstLayer;
+	Layer<dataType, neuronamout-1, neuronamout, sigmoid> secondLayer;
 
-	Neuron<dataType, 2, 1, multiplication> neu21;
+	dataType FirstgetBiasBuffer[neuronamout][inputsize];
+	dataType SecondgetBiasBuffer[neuronamout-1][neuronamout];
 
-	neu11.getInputvalues(buffer);
-	neu12.getInputvalues(buffer);
+	dataType getBiasBuffer [2][2] = {
+			{FirstgetBiasBuffer[neuronamout][inputsize], sigmoid},
+			{SecondgetBiasBuffer[neuronamout-1][neuronamout], sigmoid}
+	};
 
-	neu11.setBias(biases);
-	neu12.setBias(biases);
+//!@!
 
-	miniBuffer[0] = neu11.propagate();
-	miniBuffer[1] = neu12.propagate();
+	firstLayer.layerGetInputValues(bufferOne);
+	firstLayer.layerPropagate(bufferTwo);
 
-#ifndef __SYNTHESIS__
-		std::cout << std::endl << std::endl;
-		std::cout << "Minibuffer is: " << miniBuffer[0] << miniBuffer[1] << std::endl;
+	secondLayer.layerGetInputValues(bufferTwo);
+	secondLayer.layerPropagate(bufferOne);
 
-#endif
+	dataType output = bufferOne[0];
+	dataType targetVal = 0;
 
-	neu21.getInputvalues(miniBuffer);
-	neu21.setBias(biases);
+	dataType error = pow((output-targetVal), 2) /2;
 
-#ifndef __SYNTHESIS__
-		std::cout << "Output Val: " << out << " -> ";
-#endif
-		out = neu21.propagate();
-#ifndef __SYNTHESIS__
-		std::cout << out << std::endl;
-#endif
+	#ifndef __SYNTHESIS__
+		std::cout << "Output: " << bufferOne[0] << std::endl;
+		std::cout << "SquaredError: " << error << std::endl;
+	#endif
 
 
+
+	firstLayer.layersGetBiases(FirstgetBiasBuffer);
+	secondLayer.layersGetBiases(SecondgetBiasBuffer);
+
+	//aktualizacja wag
+
+	//aktualizacja wag
+
+
+	firstLayer.layersSetBiases(FirstgetBiasBuffer);
+	secondLayer.layersSetBiases(SecondgetBiasBuffer);
 
 };
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-	/*
-	int temp[50] = {0};
-	int ispointer[50] = {5};
-	AtoZero(a);
-	TopFunPlus(a,b, temp);
-	AtoZero(ispointer);
-
-	TopFunPlus(ispointer, b, temp);
-
-	for(int i = 0; i < 50; i++){
-		exit[i] = temp[i];
-	}
-
-	Multiplier <3647> mnozarka;
-	mnozarka.changeNumber(b[a[50]]);
-
-	if (mnozarka.returnNumber() == 1){
-
-		for(int i = 0; i < 50; i++){
-			Multiplier <214748> mnozarkaa[50];
-			mnozarka.changeNumber(b[a[i]]);
-			exit[i] = mnozarkaa[i].returnNumber();
-				}
-			}
-
-
-	exit[0] = mnozarka.returnNumber();
-
-
-};
-
-void TopFunPlus(int a[50], int b[50], int exit[50])
-{
-	int c[50];
-
-	for (int i = 0; i < 50; i++)
-	{
-		exit[i] = a[i]+b[i];
-	}
-};
-
-void AtoZero(int a[50])
-{
-	for (int i = 0; i < 50; i++)
-	{
-		a[i]=0;
-	}
-
-};
-
-*/

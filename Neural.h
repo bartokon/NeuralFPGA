@@ -1,15 +1,18 @@
-#include <math.h>
-#include <ap_fixed.h>
+#include <hls_math.h>
+#include <iostream>
+/*
+ * activation functions
+ */
 
 enum activationFunctions{
-	multiplication,
-	hyperbolicTangent,
-	sigmoid,
+	multiplication, // derivative: x
+	hyperbolicTangent, // derivative: 1/pow(cosh(x),2)
+	sigmoid, // derivative: (1/(1+exp(-x))) * (1-(1/(1+exp(-this->sum))))
 };
 
 
 /*****************************************************************************************************/
-template<class neuronDataType, int inputs, int layerNumber, activationFunctions activation>
+template<class neuronDataType, int inputs, activationFunctions activation>
 class Neuron
 {
 public:
@@ -19,12 +22,13 @@ public:
 	activationFunctions activationFunction = activation;
 	Neuron()
 	{
-
 		#ifndef __SYNTHESIS__
 		std::cout << "Hello from Neuron " << std::endl;
 		#endif
 	};
-
+/*
+ * updates biases of an neuron. Amount of biases is based on number of inputs.
+ */
 	void setBias(neuronDataType newbiasArray[inputs])
 	{
 		for (int i = 0; i < inputs; i++)
@@ -42,6 +46,22 @@ public:
 		}
 	};
 
+/*
+ * Gets actual biases of neurons to an array
+*/	void getBias(neuronDataType outbiasArray[inputs])
+		{
+			for (int i = 0; i < inputs; i++)
+			{
+				outbiasArray[i] = this->bias[i];
+			}
+		};
+
+
+/*
+ * Updates input values on each neuron in a layer.
+ */
+
+
 	void getInputvalues(neuronDataType newInputs[inputs])
 	{
 		for (int i = 0; i < inputs; i++)
@@ -58,7 +78,10 @@ public:
 		};
 
 	};
-
+/*
+ * Propagate function takes all inputs and sums them, then it activates "activateFunction()" and do activation
+ * operation based on activationFunction type that is passed by template arguments in layer creation.
+ */
 	neuronDataType propagate()
 	{
 		this->sum = 0;
@@ -76,7 +99,18 @@ public:
 
 		return this->sum;
 	};
-
+/*
+ * Here is implemented activationFunction for neuron.
+ * You can add your own activation functions for each layer like:
+ * create name for your activation function in "activationFunctions" enum
+ * and add option to the switch statement for example:
+ * case myownfunction:
+ * 	dataType x = this->sum;
+ * 	dataType output = sin(x);
+ * 	this->sum = output;
+ * break;
+ *
+*/
 	void activateFunction()
 	{
 
@@ -84,7 +118,7 @@ public:
 		{
 
 		case multiplication:
-			this->sum = this->sum*0.5; //for future add extra bias
+			this->sum = this->sum*1; //for future add extra bias
 
 			#ifndef __SYNTHESIS__
 			std::cout << "activationValue multiplication: " << this->sum << std::endl;
@@ -124,15 +158,56 @@ public:
 /*****************************************************************************************************/
 
 /*****************************************************************************************************/
-template<class dataType, int numberOfNeurons, int layerNumber,
+template<class dataType, int numberOfNeurons,
 		int nbPrevLayerNeurons, activationFunctions activationFunction>
 class Layer
 {
 public:
-	Layer()
+	Neuron<dataType, nbPrevLayerNeurons, activationFunction>  neuronLayer[numberOfNeurons];
+	activationFunctions activation = activationFunction;
+	void layerGetInputValues(dataType inputData[nbPrevLayerNeurons])
 	{
-		Neuron<dataType, nbPrevLayerNeurons, layerNumber, activationFunction> neuArray[numberOfNeurons];
+
+		for (int i = 0; i < numberOfNeurons; i++)
+		{
+			this->neuronLayer[i].getInputvalues(inputData);
+		};
+
 	};
+
+	void layerPropagate(dataType outputData[numberOfNeurons])
+	{
+		for (int i = 0; i < numberOfNeurons; i++)
+		{
+		   this->neuronLayer[i].propagate();
+		};
+
+		for (int i = 0; i < numberOfNeurons; i++)
+		{
+			outputData[i] = this->neuronLayer[i].sum;
+			#ifndef __SYNTHESIS__
+			std::cout << "LayerOutputBuffer[" << i << "] -> " << outputData[i] << std::endl;
+			#endif
+		};
+	};
+
+	void layersGetBiases(dataType outputData[numberOfNeurons][nbPrevLayerNeurons])
+	{
+		for (int i = 0; i < numberOfNeurons; i++)
+		{
+			this->neuronLayer[i].getBias(outputData[i]);
+		};
+	};
+
+	void layersSetBiases(dataType inputData[numberOfNeurons][nbPrevLayerNeurons])
+	{
+		for (int i = 0; i < numberOfNeurons; i++)
+		{
+				this->neuronLayer[i].setBias(inputData[i]);
+
+		};
+	};
+
 
 };
 /*****************************************************************************************************/

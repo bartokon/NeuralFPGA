@@ -7,9 +7,9 @@ using namespace std;
 
 int main(){
 
-	dataType buffer[1000] = {1};
+	dataType locbuffer[5] = {8, 8 ,8 ,8 ,8};
 
-	TopFun(buffer);
+	TopFun(locbuffer);
 
 
 
