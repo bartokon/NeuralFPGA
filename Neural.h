@@ -7,7 +7,7 @@
 enum activationFunctions{
 	multiplication, // derivative: x
 	hyperbolicTangent, // derivative: 1/pow(cosh(x),2)
-	sigmoid, // derivative: (1/(1+exp(-x))) * (1-(1/(1+exp(-this->sum))))
+	sigmoid, // derivative: (1/(1+exp(-x))) * (1-(1/(1+exp(-x))))
 };
 
 
@@ -158,8 +158,8 @@ public:
 /*****************************************************************************************************/
 
 /*****************************************************************************************************/
-template<class dataType, int numberOfNeurons,
-		int nbPrevLayerNeurons, activationFunctions activationFunction>
+template<class dataType, int nbPrevLayerNeurons,
+				int numberOfNeurons, activationFunctions activationFunction>
 class Layer
 {
 public:
@@ -211,5 +211,6 @@ public:
 
 };
 /*****************************************************************************************************/
+
 
 

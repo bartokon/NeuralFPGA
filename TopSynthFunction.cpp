@@ -1,8 +1,39 @@
 #include "Neural.h"
 #include "TopSynthFunction.h"
-
+#include <iostream>
+using namespace std;
 #define inputsize 5
 #define neuronamout 2
+
+struct Neurons {
+
+	int inputLayer = inputsize;
+	int firstLayer = neuronamout;
+	int secondLayer = neuronamout-1;
+
+};
+
+struct Biases {
+
+	dataType FirstgetBiasBuffer[neuronamout][inputsize] = {
+				{1, 2, 3, 4, 5}, //neuron one w1 w2 w3 w4 w5
+				{1, 2, 3, 4, 5}, //neuron two w1 w2 w3 w4 w5
+		};
+
+	dataType SecondgetBiasBuffer[neuronamout-1][neuronamout] = {
+				{3, 3}, //neuron one w1 w2
+		};
+
+};
+
+struct Activations {
+
+	activationFunctions firstLayer = sigmoid;
+
+	activationFunctions secondLayer = sigmoid;
+
+};
+
 
 void TopFun(dataType inputData[inputsize])
 {
@@ -16,19 +47,23 @@ void TopFun(dataType inputData[inputsize])
 
 
 //Creating memory interfaces and bias uploads
+	Biases biasMem;
+	constexpr Activations activationMem;
+	constexpr Neurons neuronMem;
 
-	Layer<dataType, neuronamout, inputsize, sigmoid> firstLayer;
-	Layer<dataType, neuronamout-1, neuronamout, sigmoid> secondLayer;
+	Layer<dataType, neuronMem.inputLayer, neuronMem.firstLayer, activationMem.firstLayer> firstLayer;
+	Layer<dataType, neuronMem.firstLayer, neuronMem.secondLayer,  activationMem.secondLayer> secondLayer;
 
-	dataType FirstgetBiasBuffer[neuronamout][inputsize];
-	dataType SecondgetBiasBuffer[neuronamout-1][neuronamout];
-
-	dataType getBiasBuffer [2][2] = {
-			{FirstgetBiasBuffer[neuronamout][inputsize], sigmoid},
-			{SecondgetBiasBuffer[neuronamout-1][neuronamout], sigmoid}
+	dataType *pointerTest[2] = {
+			*biasMem.FirstgetBiasBuffer,
+			*biasMem.SecondgetBiasBuffer
 	};
 
-//!@!
+	//cout << *((*pointerTest)+1) << endl;
+
+	firstLayer.layersSetBiases(biasMem.FirstgetBiasBuffer);
+	secondLayer.layersSetBiases(biasMem.SecondgetBiasBuffer);
+
 
 	firstLayer.layerGetInputValues(bufferOne);
 	firstLayer.layerPropagate(bufferTwo);
@@ -43,21 +78,22 @@ void TopFun(dataType inputData[inputsize])
 
 	#ifndef __SYNTHESIS__
 		std::cout << "Output: " << bufferOne[0] << std::endl;
-		std::cout << "SquaredError: " << error << std::endl;
+		std::cout << "SquaredEr: " << error << std::endl;
 	#endif
 
 
-
-	firstLayer.layersGetBiases(FirstgetBiasBuffer);
-	secondLayer.layersGetBiases(SecondgetBiasBuffer);
-
-	//aktualizacja wag
+	firstLayer.layersGetBiases(biasMem.FirstgetBiasBuffer);
+	secondLayer.layersGetBiases(biasMem.SecondgetBiasBuffer);
 
 	//aktualizacja wag
 
+	//aktualizacja wag
 
-	firstLayer.layersSetBiases(FirstgetBiasBuffer);
-	secondLayer.layersSetBiases(SecondgetBiasBuffer);
+
+	firstLayer.layersSetBiases(biasMem.FirstgetBiasBuffer);
+	secondLayer.layersSetBiases(biasMem.SecondgetBiasBuffer);
+
+
 
 };
 
