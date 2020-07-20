@@ -9,6 +9,7 @@
 #endif
 
 #include "TopSynthFunction.h"
+#include <stdint.h>
 
 namespace MOJNN
 {
@@ -17,29 +18,15 @@ namespace MOJNN
 
 enum activationFunctions {
 	multiplication, // derivative: x
-	hyperbolicTangent, // derivative: 1/pow(cosh(x),2)
+	relu,
 	sigmoid, // derivative: (1/(1+exp(-x))) * (1-(1/(1+exp(-x))))
 };
 
-//Startup biases for testing
-
-dataType FirstgetBiasBuffer[neuronamout][inputsize + 1] = {
-		{ 1, 3, -1 }, //neuron one w1 w2 w3 w4 w5
-		{ 5, 8, 1 }, //neuron two w1 w2 w3 w4 w5
-		};
-
-dataType SecondgetBiasBuffer[neuronamout][neuronamout + 1] = {
-		{ 5, 2, 1 }, //neuron one w1 w2 w3 w4 w5
-		{ 7, 6, -5 }, //neuron one w1 w2 w3 w4 w5
-		};
-
 //Shared Variables
-dataType tempBiaes[neuronamout+1] = {0};
+dataType tempBiaes[20+1] = {0}; //Max amout of neurons +1
 dataType learningRate = 0.01;
 dataType newWeight;
-dataType tempSum;
-
-
+static dataType propagateSum;
 
 
 /*****************************************************************************************************/
@@ -55,9 +42,7 @@ dataType tempSum;
 		static const activationFunctions activationFunction = activation;
 		Neuron()
 		{
-			#ifndef __SYNTHESIS__
-			//std::cout << "Hello from Neuron " << std::endl;
-			#endif
+
 		};
 	/*
 	 * updates biases of an neuron. Amount of biases is based on number of inputs.
@@ -66,22 +51,14 @@ dataType tempSum;
 		{
 			for (int i = 0; i <= inputs; i++)
 			{
-			#ifndef __SYNTHESIS__
-			//	std::cout << "Neuron bias changed: " << this->bias[i] << " -> ";
-			#endif
-
 				this->bias[i] = newbiasArray[i];
-
-			#ifndef __SYNTHESIS__
-				//std::cout << this->bias[i] << std::endl;
-			#endif
-
 			}
 		};
 
 	/*
 	 * Gets actual biases of neurons to an array
-	*/	void getBias(neuronDataType outbiasArray[inputs])
+	*/
+		void getBias(neuronDataType outbiasArray[inputs])
 			{
 				for (int i = 0; i <= inputs; i++)
 				{
@@ -121,16 +98,9 @@ dataType tempSum;
 			for (int i = 0; i < inputs; i++)
 			{
 				this->sum = this->sum + input[i] * bias[i];
-
-				#ifndef __SYNTHESIS__
-				//std::cout << "Input: " << input[i] << " Bias: " << bias[i]<< std::endl;
-				//std::cout << "Neuron new sum is: " << this->sum << std::endl;
-				#endif
 			};
-
 			this->sum = this->sum + bias[inputs];
 			activateFunction();
-
 			return actValue;
 		};
 	/*
@@ -151,34 +121,26 @@ dataType tempSum;
 			switch (this->activationFunction)
 			{
 
-			case multiplication:
-				actValue = this->sum*1; //for future add extra bias
+			case relu:
+				if (this->sum < 0)
+				{
+					actValue = 0;
+				}
+				else
+				{
+					actValue = this->sum*1; //for future add extra bias
+				}
 
-				#ifndef __SYNTHESIS__
-				//std::cout << "activationValue multiplication: " << this->sum << std::endl;
-				#endif
-			break;
-
-			case hyperbolicTangent:
-				actValue = tanh(this->sum);
-
-				#ifndef __SYNTHESIS__
-				//std::cout << "activationValue tanh: " << this->sum << std::endl;
-				#endif
 			break;
 
 			case sigmoid:
 				actValue = 1/(1+exp(-this->sum));
-
-				#ifndef __SYNTHESIS__
-				//std::cout << "activationValue sigmoid: " << this->sum << std::endl;
-				#endif
 			break;
 
 
 			default:
 				#ifndef __SYNTHESIS__
-				//std::cout << "activationValue default: " << this->sum << std::endl;
+				std::cout << "ERROR activationValue default: " << this->sum << std::endl;
 				#endif
 			break;
 			};
@@ -189,9 +151,7 @@ dataType tempSum;
 
 
 	};
-	/*****************************************************************************************************/
 
-	/*****************************************************************************************************/
 	template<class dataType, int nbPrevLayerNeurons,
 					int numberOfNeurons, activationFunctions activationFunction>
 	class Layer
@@ -216,9 +176,6 @@ dataType tempSum;
 			for (int i = 0; i < numberOfNeurons; i++)
 			{
 				outputData[i] = this->neuronLayer[i].actValue;
-				#ifndef __SYNTHESIS__
-			//	std::cout << "LayerOutputBuffer[" << i << "] -> " << outputData[i] << std::endl;
-				#endif
 			};
 		};
 
@@ -246,7 +203,7 @@ dataType tempSum;
 	template <class dataType>
 	dataType getDerivative(dataType value, MOJNN::activationFunctions activationFunction)
 	{
-		dataType returnVal;
+		dataType returnVal = 0.0;
 		switch (activationFunction)
 					{
 
@@ -256,8 +213,16 @@ dataType tempSum;
 
 					break;
 
-					case MOJNN::hyperbolicTangent:
-						returnVal = 1/(cosh(value)*cosh(value));
+					case MOJNN::relu:
+						if (value > 0)
+						{
+							returnVal = 1;
+						}
+						else
+						{
+							returnVal = 0;
+						}
+
 
 
 					break;
@@ -265,13 +230,12 @@ dataType tempSum;
 					case MOJNN::sigmoid:
 						returnVal = value*(1-value);
 
-
 					break;
 
 
 					default:
 						#ifndef __SYNTHESIS__
-						//std::cout << "activationValue default: " << this->sum << std::endl;
+						std::cout << "activationValue default" << std::endl;
 						#endif
 					break;
 					};
@@ -280,107 +244,110 @@ dataType tempSum;
 	};
 
 
-
-
-template <int arrsize>
-void calculateError(dataType resultglob[arrsize], ioDataType targetglob[arrsize], dataType outputErrorDerivative[arrsize])
-	{
-		#ifndef __SYNTHESIS__
-			dataType totalError = 0;;
-		#endif
-
-		dataType result[arrsize];
-		dataType target[arrsize];
-
-
-		for(int i = 0; i < arrsize; i++)
-		{
-			result[i] = resultglob[i];
-			target[i] = (dataType)targetglob[i];
-		}
-
-		for (int i = 0; i < arrsize; i++)
-		{
-			#ifndef __SYNTHESIS__
-				totalError = totalError +  ((target[i] - result[i])*(target[i] - result[i]))/2;
-			#endif
-
-			outputErrorDerivative[i] = result[i]-target[i];
-		}
-
-		#ifndef __SYNTHESIS__
-			//	std::cout << std::endl << "Total Err: " << totalError << std::endl;
-		#endif
-
-
-		//neuron output
-
-	};
-
 //Dobre sprawdzone
 template<
-	class dataType, int nbPrevLayerNeurons, int numberOfNeurons, MOJNN::activationFunctions activationFunction>
-	void BackPropagate(dataType outputErrorDerivative[numberOfNeurons],
-			MOJNN::Layer <dataType, nbPrevLayerNeurons, numberOfNeurons, activationFunction> *ostatniaWarstwa)
+	class outputLayerDataType, int outputLayerNumberOfInputs, int outputLayerNumberOfNeurons, MOJNN::activationFunctions outputLayerActivationFunction>
+	void BackPropagate(dataType target[outputLayerNumberOfNeurons],
+			MOJNN::Layer <dataType, outputLayerNumberOfInputs, outputLayerNumberOfNeurons, outputLayerActivationFunction> *outputLayer)
 	{
 label0:;
 
-		for (int n = 0; n < numberOfNeurons; n++)
+		dataType outputErrorDerivative[outputLayerNumberOfNeurons];
+		propagateSum = 0;
+		dataType tempSum = 0;
+
+		#ifndef __SYNTHESIS__
+			dataType totalError = 0;;
+		#endif
+		for (int n = 0; n < outputLayerNumberOfNeurons; n++)
+			{
+					#ifndef __SYNTHESIS__
+						totalError = totalError +  ((target[n] - outputLayer->neuronLayer[n].actValue)*(target[n] - outputLayer->neuronLayer[n].actValue))/2;
+					#endif
+					outputErrorDerivative[n] = outputLayer->neuronLayer[n].actValue-target[n];
+			}
+		#ifndef __SYNTHESIS__
+						//std::cout<<"Total Loss: " << totalError << std::endl;
+		#endif
+
+		for (int n = 0; n < outputLayerNumberOfNeurons; n++)
 		{
-			ostatniaWarstwa->neuronLayer[n].getBias(tempBiaes); //stare biasy aktualnego neuronu
-			for (int b = 0; b <= nbPrevLayerNeurons; b++) //dodalem rownasie
-					{
-						//tempBiaes[b] = tempBiaes[b]-learningRate*outputErrorDerivative[n] * ostatniaWarstwa->neuronLayer[n].actValue*(1-ostatniaWarstwa->neuronLayer[n].actValue) *ostatniaWarstwa->neuronLayer[b].input[b];
-						tempBiaes[b] = tempBiaes[b]-learningRate*outputErrorDerivative[n] * getDerivative<dataType>(ostatniaWarstwa->neuronLayer[n].actValue, activationFunction) *ostatniaWarstwa->neuronLayer[b].input[b];
-
-
-						#ifndef __SYNTHESIS__
-						//std::cout << "Neuron " << n << " bias " << b << " Nowa waga " << tempBiaes[b] << std::endl;
-						#endif
-
-					}
-			ostatniaWarstwa->neuronLayer[n].setBias(tempBiaes); //nowe biasy aktualnego neuronu
+			tempSum = outputErrorDerivative[n] * getDerivative<dataType>(outputLayer->neuronLayer[n].actValue, outputLayer->activation);
+			for (int b = 0; b < outputLayerNumberOfInputs; b++)
+			{
+				propagateSum = propagateSum + tempSum * outputLayer->neuronLayer[n].bias[b];
+				outputLayer->neuronLayer[n].bias[b] = outputLayer->neuronLayer[n].bias[b] - (learningRate * tempSum) * outputLayer->neuronLayer[n].input[b];
+			}
+			outputLayer->neuronLayer[n].bias[outputLayerNumberOfInputs] = outputLayer->neuronLayer[n].bias[outputLayerNumberOfInputs] - (learningRate*tempSum);
 		}
-
 
 	};
 
-template<
-	class dataType, int nbPrevLayerNeurons, int numberOfNeurons, MOJNN::activationFunctions activationFunction,
-	class dataType1, int nbPrevLayerNeurons1, int numberOfNeurons1, MOJNN::activationFunctions activationFunction1>
-	void BackPropagate(dataType outputErrorDerivative[numberOfNeurons],
-			MOJNN::Layer <dataType, nbPrevLayerNeurons, numberOfNeurons, activationFunction> *ostatniaWarstwa,
-			MOJNN::Layer <dataType1, nbPrevLayerNeurons1, numberOfNeurons1, activationFunction1> *warstwa1)
-{
-label1:;
-
-
-	for (int j = 0; j < numberOfNeurons1; j++)
+template<class inputLayerDataType, int inputLayerNumberOfInputs, int inputLayerNumberOfNeurons, MOJNN::activationFunctions inputLayerActivationFunction>
+void BackPropagate(MOJNN::Layer <inputLayerDataType, inputLayerNumberOfInputs, inputLayerNumberOfNeurons, inputLayerActivationFunction> *inputLayer)
 	{
-		tempSum = 0;
+	label1:;
 
-		for (int i = 0; i < numberOfNeurons; i++)
+		dataType tempSum = 0;
+		for(int n = 0; n < inputLayerNumberOfNeurons; n++)
 		{
-				ostatniaWarstwa->neuronLayer[i].getBias(tempBiaes);
-				tempSum = tempSum + outputErrorDerivative[i]*getDerivative<dataType>(ostatniaWarstwa->neuronLayer[i].actValue, activationFunction)*tempBiaes[0];
+			tempSum = tempSum * getDerivative(inputLayer->neuronLayer[n].actValue, inputLayer->activation);
+			for(int b = 0; b < inputLayerNumberOfInputs; b++)
+			{
+				propagateSum = propagateSum + tempSum * inputLayer->neuronLayer[n].bias[b];
+				inputLayer->neuronLayer[n].bias[b] = inputLayer->neuronLayer[n].bias[b] - (learningRate * propagateSum) * inputLayer->neuronLayer[n].input[b];
+			}
+
+			inputLayer->neuronLayer[n].bias[inputLayerNumberOfInputs] = inputLayer->neuronLayer[n].bias[inputLayerNumberOfInputs] - (learningRate * propagateSum); //Bias update
+			std::cout << "Dupa";
 		}
 
-		tempSum = tempSum * getDerivative<dataType>(warstwa1->neuronLayer[j].actValue, activationFunction1);
-		tempSum = tempSum * learningRate;
-		warstwa1->neuronLayer[j].getBias(tempBiaes);
+	};
 
-		for (int i = 0; i <= numberOfNeurons; i++) //dodalem rownasie
+
+
+
+/* The state array must be initialized to not be all zero in the first four words */
+uint32_t xorwow()
+{
+	static uint32_t a = 1024, b = 64, c = 128, d = 512;
+	static uint32_t counter = 1;
+
+	/* Algorithm "xorwow" from p. 5 of Marsaglia, "Xorshift RNGs" */
+	uint32_t t = d;
+
+	uint32_t const s = a;
+	d = c;
+	c = b;
+	b = s;
+
+	t ^= t >> 2;
+	t ^= t << 1;
+	t ^= s ^ (s << 4);
+	a = t;
+
+	counter += 362437;
+	return (t + counter);
+}
+
+template <class dataType, int rows, int columns>
+void randomBias(dataType inputArray[rows][columns])
+{
+	for(int row = 0; row < rows; row ++)
 		{
-			newWeight = tempSum * warstwa1->neuronLayer[j].input[i];
-			tempBiaes[i] = tempBiaes[i] - newWeight;
+			for(int column = 0; column < columns; column++)
+			{
+				dataType temp;
+				do
+				{
+					temp = (dataType)xorwow();
+				}
+				while (temp == 0);
+				temp = temp/4294967296;
+				std::cout << "Temp is: " << temp << std::endl;
+				inputArray[row][column] = temp;
+			}
 		}
-		warstwa1->neuronLayer[j].setBias(tempBiaes);
-
-	}
-
-	BackPropagate<dataType, nbPrevLayerNeurons, numberOfNeurons, activationFunction>(outputErrorDerivative, ostatniaWarstwa);
- /* Propagacja dwu wartstwowa polega na obliczeniu nowych wag do warstwy 2 a nastepnie do warstwy 1 po to aby nie pamiętać starych wag po aktualizacji*/
-
 };
 
 };

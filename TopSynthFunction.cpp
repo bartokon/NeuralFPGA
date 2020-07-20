@@ -18,50 +18,66 @@
 #include "TopSynthFunction.h"
 #endif
 
+static float temp[16][5];
 
-void TopFun(ioDataType inputData[inputsize], ioDataType outputData[outputsize], ap_uint<2> instruction){
+//	{ 1, 3, -1 }, //neuron one w1 w2 w3 w4 w5
+//	{ 5, 8, 1 },  //neuron two w1 w2 w3 w4 w5
+float FirstgetBiasBuffer[8][5] = {0};
+float SecondgetBiasBuffer[3][9] = {0};
+float hiddenLayerBiasBuffer[8][9] = {0};
 
-	static MOJNN::Layer<dataType, 2, 2, MOJNN::hyperbolicTangent> firstLayer;
-	static MOJNN::Layer<dataType, 2, 2, MOJNN::hyperbolicTangent> secondLayer;
+void TopFun(ioDataType inputData[inputsize], ioDataType outputData[outputsize], int instruction){
+
+	static MOJNN::Layer<dataType, 4, 8, MOJNN::sigmoid> firstLayer;
+	static MOJNN::Layer<dataType, 8, 3, MOJNN::sigmoid> secondLayer;
+	static MOJNN::Layer<dataType, 8, 8, MOJNN::sigmoid> hiddenLayer;
+
 	dataType bufferOne[inputsize] = {0};
 	dataType bufferTwo[inputsize] = {0};
-	dataType outputErrorDerivative[2] = {0};
+	dataType outputErrorDerivative[3] = {0};
 	static bool isInit = false;
 
 	if (isInit == false)
 	{
-		firstLayer.layersSetBiases(MOJNN::FirstgetBiasBuffer);
-		secondLayer.layersSetBiases(MOJNN::SecondgetBiasBuffer);
+		MOJNN::randomBias<dataType, 8, 5>(FirstgetBiasBuffer);
+		MOJNN::randomBias<dataType, 3, 9>(SecondgetBiasBuffer);
+		MOJNN::randomBias<dataType, 8, 9>(hiddenLayerBiasBuffer);
+
+		firstLayer.layersSetBiases(FirstgetBiasBuffer);
+		secondLayer.layersSetBiases(SecondgetBiasBuffer);
+		hiddenLayer.layersSetBiases(hiddenLayerBiasBuffer);
 		isInit = true;
 	}
+
 
 	//Load input Data to buffers
 	for (int i = 0; i < inputsize; i++)
 	{
 		bufferOne[i]=inputData[i];
-	};
+	}
 
 	//Start Propagation
 	firstLayer.layerPropagate(bufferOne, bufferTwo);
-	secondLayer.layerPropagate(bufferTwo, bufferOne);
+	hiddenLayer.layerPropagate(bufferTwo, bufferOne);
+	secondLayer.layerPropagate(bufferOne, bufferTwo);
 
 	//Check if backpropagation is enabled
 	if (instruction == 1)
 	{
-		MOJNN::calculateError<1>(bufferOne, outputData, outputErrorDerivative);
-		/*Odwrotna kolejnosc podawanych funkcji*/
-		MOJNN::BackPropagate<
-			dataType, 2, 2, MOJNN::hyperbolicTangent,
-			dataType, 2, 2, MOJNN::hyperbolicTangent>(outputErrorDerivative, &secondLayer, &firstLayer);
+		MOJNN::BackPropagate<dataType, 8, 3, MOJNN::sigmoid>(outputData, &secondLayer);
+		MOJNN::BackPropagate<dataType, 8, 8, MOJNN::sigmoid>(&hiddenLayer);
+		MOJNN::BackPropagate<dataType, 4, 8, MOJNN::sigmoid>(&firstLayer);
 	}
+
+
 
 	if (instruction == 0)
 	{
 		//Send data back to user
-		for (int i = 0; i < outputsize; i++)
+		for (int i = 0; i < 3; i++) //3 cos znaczy!
 		{
-			outputData[i]=bufferOne[i];
-		};
+			outputData[i]=bufferTwo[i];
+		}
 	}
 
 
