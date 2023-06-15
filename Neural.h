@@ -1,19 +1,13 @@
-#ifndef _iostream_
-#define _iostream_
-#include <iostream>
-#endif
+#ifndef TopSynthFunction_
+#define TopSynthFunction_
 
-#ifndef _math_h_
-#define _math_h_
+#include <iostream>
 #include <math.h>
-#endif
 
 #include "TopSynthFunction.h"
 
 namespace MOJNN
 {
-
-
 
 enum activationFunctions {
 	multiplication, // derivative: x
@@ -384,3 +378,4 @@ label1:;
 };
 
 };
+#endif
