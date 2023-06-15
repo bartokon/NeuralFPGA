@@ -1,23 +1,8 @@
-#ifndef _iostream_
-#define _iostream_
 #include <iostream>
-#endif
-
-#ifndef _limits_
-#define _limits_
 #include <limits>
-#endif
 
-#ifndef _neural_h_
-#define _neural_h_
 #include "Neural.h"
-#endif
-
-#ifndef _TopSynthFunction_h_
-#define _TopSynthFunction_h_
 #include "TopSynthFunction.h"
-#endif
-
 
 void TopFun(ioDataType inputData[inputsize], ioDataType outputData[outputsize], ap_uint<2> instruction){
 
